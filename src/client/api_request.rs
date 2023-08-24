@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use super::UA;
 use crate::crypto::Crypto;
-use openssl::hash::{hash, MessageDigest};
 use serde::Serialize;
 use serde_json::{json, Value};
 
@@ -201,8 +200,7 @@ impl ApiRequest {
     }
 
     pub fn id(&self) -> String {
-        let digest = hash(MessageDigest::md5(), self.serialize().as_bytes()).unwrap();
-        hex::encode(digest)
+        crate::crypto::md5_hex(self.serialize().as_bytes())
     }
 
     // pub fn url(&self) -> &str {

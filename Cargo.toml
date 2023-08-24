@@ -20,7 +20,7 @@ tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
 serde_json = "1.0"
-openssl = "0.10"
+openssl = { version = "0.10", optional = true }
 hex = "0.4"
 rand = "0.8"
 base64 = "0.13"
@@ -29,3 +29,20 @@ cookie = "0.15"
 regex = "1.5"
 phf = { version = "0.9", features = ["macros"] }
 thiserror = "1"
+
+ring = { version = "0.17.0-alpha.11", optional = true }
+rustls = { version = "0.21", optional = true }
+rustls-pemfile = { version = "1", optional = true }
+md5 = { version = "0.7.0", optional = true } 
+ecb = { version = "0.1", optional = true }
+cbc = { version = "0.1", optional = true }
+aes = { version = "0.8", optional = true }
+rsa = { version = "0.9", optional = true }
+
+[features]
+default = ["use-rustls", "use-openssl", "default-rustls"]
+default-openssl = ["use-openssl"]
+default-rustls = ["use-rustls"]
+use-rustls = ["rustls", "ring", "md5", "ecb", "aes", "cbc", "rsa", "rustls-pemfile"]
+use-openssl = ["openssl"]
+

@@ -1,6 +1,6 @@
 //! NetEase Cloud Music API For Rust.
 
-mod api;
+pub(crate) mod api;
 mod client;
 mod crypto;
 pub mod types;

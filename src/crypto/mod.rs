@@ -1,11 +1,16 @@
 mod key;
+#[cfg(feature = "use-rustls")]
+mod use_rustls;
+#[cfg(feature = "use-openssl")]
+mod use_openssl;
 
-use openssl::{
-    error::ErrorStack,
-    hash::{hash, MessageDigest},
-    rsa::{Padding, Rsa},
-    symm::{decrypt, encrypt, Cipher},
-};
+#[cfg(feature = "default-rustls")]
+pub use use_rustls::*;
+
+#[cfg(feature = "default-openssl")]
+pub use use_openssl::*;
+
+
 use rand::RngCore;
 use serde::Serialize;
 
@@ -66,14 +71,14 @@ pub fn weapi(text: &[u8]) -> WeapiForm {
         let p = base64::encode(aes_128_cbc(
             text,
             PRESET_KEY.as_bytes(),
-            Some(IV.as_bytes()),
+            IV.as_bytes(),
         ));
-        base64::encode(aes_128_cbc(p.as_bytes(), &sk, Some(IV.as_bytes())))
+        base64::encode(aes_128_cbc(p.as_bytes(), &sk, IV.as_bytes()))
     };
 
     let enc_sec_key = {
         let reversed_sk = sk.iter().rev().copied().collect::<Vec<u8>>();
-        hex::encode(rsa(&reversed_sk, PUBLIC_KEY.as_bytes()))
+        hex::encode(rsa(&reversed_sk, PUBLIC_KEY))
     };
 
     WeapiForm {
@@ -88,7 +93,7 @@ pub fn eapi(url: &[u8], data: &[u8]) -> EapiForm {
         String::from_utf8_lossy(url),
         String::from_utf8_lossy(data)
     );
-    let digest = hex::encode(hash(MessageDigest::md5(), msg.as_bytes()).unwrap());
+    let digest = md5_hex(msg.as_bytes());
 
     let text = {
         let d = "-36cd479b6b5-";
@@ -96,81 +101,25 @@ pub fn eapi(url: &[u8], data: &[u8]) -> EapiForm {
     };
 
     let params = {
-        let p = aes_128_ecb(&text, EAPI_KEY.as_bytes(), None);
+        let p = aes_128_ecb(&text, EAPI_KEY.as_bytes());
         hex::encode_upper(p)
     };
 
     EapiForm { params }
 }
 
-#[allow(unused)]
-pub fn eapi_decrypt(ct: &[u8]) -> Result<Vec<u8>, ErrorStack> {
-    aes_128_ecb_decrypt(ct, EAPI_KEY.as_bytes(), None)
-}
-
 pub fn linuxapi(text: &[u8]) -> LinuxapiForm {
-    let ct = aes_128_ecb(text, LINUX_API_KEY.as_bytes(), None);
+    let ct = aes_128_ecb(text, LINUX_API_KEY.as_bytes());
     let eparams = hex::encode_upper(ct);
 
     LinuxapiForm { eparams }
 }
 
-fn aes_128_ecb(pt: &[u8], key: &[u8], iv: Option<&[u8]>) -> Vec<u8> {
-    let cipher = Cipher::aes_128_ecb();
-    encrypt(cipher, key, iv, pt).unwrap()
-}
-
-fn aes_128_ecb_decrypt(ct: &[u8], key: &[u8], iv: Option<&[u8]>) -> Result<Vec<u8>, ErrorStack> {
-    let cipher = Cipher::aes_128_ecb();
-    decrypt(cipher, key, iv, ct)
-}
-
-fn aes_128_cbc(pt: &[u8], key: &[u8], iv: Option<&[u8]>) -> Vec<u8> {
-    let cipher = Cipher::aes_128_cbc();
-    encrypt(cipher, key, iv, pt).unwrap()
-}
-
-fn rsa(pt: &[u8], key: &[u8]) -> Vec<u8> {
-    let rsa = Rsa::public_key_from_pem(key).unwrap();
-
-    let prefix = vec![0u8; 128 - pt.len()];
-    let pt = [&prefix[..], pt].concat();
-
-    let mut ct = vec![0; rsa.size() as usize];
-    rsa.public_encrypt(&pt, &mut ct, Padding::NONE).unwrap();
-    ct
-}
-
 #[cfg(test)]
 mod tests {
-    use super::key::{EAPI_KEY, IV, PRESET_KEY, PUBLIC_KEY};
-    use super::{aes_128_cbc, aes_128_ecb, aes_128_ecb_decrypt, rsa, weapi};
+    use super::key::{EAPI_KEY};
+    use super::{aes_128_ecb, weapi};
     use crate::crypto::{eapi, eapi_decrypt, linuxapi};
-
-    #[test]
-    fn test_aes_128_ecb() {
-        let pt = "plain text";
-        let ct = aes_128_ecb(pt.as_bytes(), EAPI_KEY.as_bytes(), None);
-        let _pt = aes_128_ecb_decrypt(&ct, EAPI_KEY.as_bytes(), None);
-        assert!(_pt.is_ok());
-
-        if let Ok(decrypted) = _pt {
-            assert_eq!(&decrypted, pt.as_bytes());
-        }
-    }
-
-    #[test]
-    fn test_aes_cbc() {
-        let pt = "plain text";
-        let ct = aes_128_cbc(pt.as_bytes(), PRESET_KEY.as_bytes(), Some(IV.as_bytes()));
-        assert!(hex::encode(ct).ends_with("baf0"))
-    }
-
-    #[test]
-    fn test_rsa() {
-        let ct = rsa(PRESET_KEY.as_bytes(), PUBLIC_KEY.as_bytes());
-        assert!(hex::encode(ct).ends_with("4413"));
-    }
 
     #[test]
     fn test_weapi() {
@@ -186,7 +135,7 @@ mod tests {
     #[test]
     fn test_eapi_decrypt() {
         let pt = "plain text";
-        let ct = aes_128_ecb(pt.as_bytes(), EAPI_KEY.as_bytes(), None);
+        let ct = aes_128_ecb(pt.as_bytes(), EAPI_KEY.as_bytes());
         assert_eq!(pt.as_bytes(), &eapi_decrypt(&ct).unwrap())
     }
 
