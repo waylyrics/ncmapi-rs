@@ -1,8 +1,5 @@
 use aes::cipher::{KeyInit, BlockEncryptMut, BlockSizeUser, block_padding::{Pkcs7, UnpadError}, BlockDecryptMut, KeyIvInit};
-use rand::{RngCore, CryptoRng, rngs::ThreadRng};
-use ring::signature::{RsaKeyPair, RsaSubjectPublicKey};
-use rsa::{RsaPublicKey, pkcs8::DecodePublicKey, Pkcs1v15Encrypt, rand_core::CryptoRngCore};
-use rustls::internal::msgs::codec::Codec;
+use rsa::{RsaPublicKey, nopad::{NoRng, ZeroPadEncrypt}, pkcs8::DecodePublicKey};
 
 use super::key::EAPI_KEY;
 
@@ -42,37 +39,10 @@ pub fn aes_128_cbc(pt: &[u8], key: &[u8], iv: &[u8]) -> Vec<u8> {
     res
 }
 
-struct PRng {
-    rng: ThreadRng 
-}
-
-impl CryptoRng for PRng {
-    
-}
-impl RngCore for PRng {
-    fn next_u32(&mut self) -> u32 {
-        65537
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        65537
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        self.rng.fill_bytes(dest)
-    }
-
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
-        self.rng.try_fill_bytes(dest)
-    }
-}
-
 pub fn rsa(pt: &[u8], key: &str) -> Vec<u8> {
-    let rng = rand::thread_rng();
-
     let rsa = RsaPublicKey::from_public_key_pem(key).unwrap();
 
-    let ct = rsa.encrypt(&mut PRng {rng}, Pkcs1v15Encrypt, &pt).unwrap();
+    let ct = rsa.encrypt(&mut NoRng, ZeroPadEncrypt, &pt).unwrap();
     ct
 }
 
@@ -86,7 +56,6 @@ mod tests {
     fn test_aes_cbc() {
         let pt = "plain text";
         let ct = aes_128_cbc(pt.as_bytes(), PRESET_KEY.as_bytes(), IV.as_bytes());
-        println!("{}", hex::encode(&ct));
         assert!(hex::encode(ct).ends_with("baf0"))
     }
 
@@ -106,7 +75,6 @@ mod tests {
     #[test]
     fn test_rsa() {
         let ct = rsa(PRESET_KEY.as_bytes(), PUBLIC_KEY);
-        println!("{}", hex::encode(&ct));
         assert!(hex::encode(ct).ends_with("4413"));
     }
 }

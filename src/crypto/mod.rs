@@ -5,10 +5,10 @@ mod use_rustls;
 mod use_openssl;
 
 #[cfg(feature = "default-rustls")]
-pub use use_rustls::*;
+pub(crate) use use_rustls::*;
 
 #[cfg(feature = "default-openssl")]
-pub use use_openssl::*;
+pub(crate) use use_openssl::*;
 
 
 use rand::RngCore;
@@ -117,7 +117,7 @@ pub fn linuxapi(text: &[u8]) -> LinuxapiForm {
 
 #[cfg(test)]
 mod tests {
-    use super::key::{EAPI_KEY};
+    use super::key::EAPI_KEY;
     use super::{aes_128_ecb, weapi};
     use crate::crypto::{eapi, eapi_decrypt, linuxapi};
 
