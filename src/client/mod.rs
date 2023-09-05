@@ -1,5 +1,6 @@
 mod api_request;
 mod api_response;
+pub use api_response::ImplicitResult;
 mod route;
 mod store;
 
@@ -41,7 +42,7 @@ pub struct ApiClient {
     config: Config,
     client: Client,
     #[cfg(feature = "cache")]
-    store: Box<dyn InMemStore>,
+    store: Store,
     // this is a compromise way to sync & retrive cookies, since access to cookie jar
     // is denied by self.client::Afc<ClientRef>.cookie_store;
     jar: Arc<dyn CookieStore>,
@@ -100,7 +101,7 @@ impl ApiClientBuilder {
             config,
             client: Client::builder().cookie_store(false).build().unwrap(),
             #[cfg(feature = "cache")]
-            store: Box::new(Store::new(ci)),
+            store: Store::new(ci),
             jar,
         })
     }

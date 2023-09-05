@@ -6,6 +6,7 @@ mod crypto;
 pub mod types;
 
 pub use api::{NcmApi, ResourceType, SearchType};
+pub use client::ImplicitResult;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
