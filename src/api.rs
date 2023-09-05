@@ -930,6 +930,7 @@ const ANONYMOUS_TOKEN: &str = "8aae43f148f990410b9a2af38324af24e87ab9227c9265627
 #[cfg(test)]
 mod tests {
     use serde::Deserialize;
+    use serde_json::Value;
     use tokio::fs;
 
     use crate::NcmApi;
@@ -952,7 +953,10 @@ mod tests {
         let resp = api.search("mota", None).await;
         assert!(resp.is_ok());
         let res = resp.unwrap().deserialize_to_implict();
-        assert_eq!(res.code, 200);
+        let code = res.code;
+        let res: Value = serde_json::from_value(res.result).unwrap();
+        println!("{res}");
+        assert_eq!(code, 200);
     }
 
     #[tokio::test(flavor = "multi_thread")]
