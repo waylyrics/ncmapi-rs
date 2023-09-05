@@ -37,7 +37,7 @@ aes = { version = "0.8", optional = true }
 rsa = { git="https://github.com/Discreater/RSA", optional = true }
 
 [features]
-default = ["use-rustls", "use-openssl", "default-rustls"]
+default = ["use-rustls", "default-rustls"]
 default-openssl = ["use-openssl"]
 default-rustls = ["use-rustls"]
 use-rustls = ["md5", "ecb", "aes", "cbc", "rsa"]
