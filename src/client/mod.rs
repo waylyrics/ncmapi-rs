@@ -40,6 +40,7 @@ use self::api_request::Hm;
 pub struct ApiClient {
     config: Config,
     client: Client,
+    #[cfg(feature = "cache")]
     store: Box<dyn InMemStore>,
     // this is a compromise way to sync & retrive cookies, since access to cookie jar
     // is denied by self.client::Afc<ClientRef>.cookie_store;
@@ -62,8 +63,11 @@ impl ApiClientBuilder {
     pub fn new(cookie_path: &str) -> Self {
         ApiClientBuilder {
             config: Config {
+                #[cfg(feature = "cache")]
                 cache: true,
+                #[cfg(feature = "cache")]
                 cache_exp: Duration::from_secs(3 * 60),
+                #[cfg(feature = "cache")]
                 cache_clean_interval: Duration::from_secs(6 * 60),
                 base_url: BASE_URL.parse::<Url>().unwrap(),
                 preserve_cookies: true,
@@ -76,6 +80,7 @@ impl ApiClientBuilder {
 
     pub fn build(self) -> TResult<ApiClient> {
         let config = self.config;
+        #[cfg(feature = "cache")]
         let ci = config.cache_clean_interval;
         let jar = Arc::new(Jar::default());
 
@@ -94,21 +99,25 @@ impl ApiClientBuilder {
         Ok(ApiClient {
             config,
             client: Client::builder().cookie_store(false).build().unwrap(),
+            #[cfg(feature = "cache")]
             store: Box::new(Store::new(ci)),
             jar,
         })
     }
 
+    #[cfg(feature = "cache")]
     pub fn cache(mut self, enable: bool) -> Self {
         self.config.cache = enable;
         self
     }
 
+    #[cfg(feature = "cache")]
     pub fn cache_exp(mut self, exp: Duration) -> Self {
         self.config.cache_exp = exp;
         self
     }
 
+    #[cfg(feature = "cache")]
     pub fn cache_clean_interval(mut self, exp: Duration) -> Self {
         self.config.cache_clean_interval = exp;
         self
@@ -148,6 +157,7 @@ impl ApiClient {
     pub async fn request(&self, req: ApiRequest) -> TResult<ApiResponse> {
         let id = req.id();
 
+        #[cfg(feature = "cache")]
         if self.store.contains_key(&id) {
             return Ok(self.store.get(&id).unwrap());
         }
@@ -179,10 +189,16 @@ impl ApiClient {
         let res = ApiResponse::new(body.to_vec());
 
         // cache response
-        self.store
-            .insert(id.clone(), res, Some(self.config.cache_exp));
+        #[cfg(feature = "cache")]
+        {
+            self.store
+                .insert(id.clone(), res, Some(self.config.cache_exp));
 
-        Ok(self.store.get(&id).unwrap())
+            Ok(self.store.get(&id).unwrap())
+        }
+
+        #[cfg(not(feature = "cache"))]
+        Ok(res)
     }
 
     fn to_http_request(&self, req: ApiRequest) -> TResult<Request> {
@@ -445,8 +461,11 @@ impl ApiClient {
 
 #[derive(Debug)]
 pub(crate) struct Config {
+    #[cfg(feature = "cache")]
     cache: bool,
+    #[cfg(feature = "cache")]
     cache_exp: Duration,
+    #[cfg(feature = "cache")]
     cache_clean_interval: Duration,
 
     preserve_cookies: bool,
@@ -576,8 +595,13 @@ mod tests {
 
     #[test]
     fn test_client() {
+        #[cfg(feature = "cache")]
         let cb = ApiClientBuilder::new(COOKIE_PATH)
             .cache(true)
+            .preserve_cookies(true)
+            .log_request(true);
+        #[cfg(not(feature = "cache"))]
+        let cb = ApiClientBuilder::new(COOKIE_PATH)
             .preserve_cookies(true)
             .log_request(true);
 

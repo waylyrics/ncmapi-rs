@@ -19,18 +19,25 @@ pub struct NcmApi {
 impl NcmApi {
     /// NecmApi constructor
     pub fn new(
-        enable_cache: bool,
-        cache_exp: Duration,
-        cache_clean_interval: Duration,
+        #[cfg(feature = "cache")] enable_cache: bool,
+        #[cfg(feature = "cache")] cache_exp: Duration,
+        #[cfg(feature = "cache")] cache_clean_interval: Duration,
         preserve_cookies: bool,
         cookie_path: &str,
     ) -> Self {
         Self {
+            #[cfg(feature = "cache")]
             client: ApiClientBuilder::new(cookie_path)
                 .cookie_path(cookie_path)
                 .cache(enable_cache)
                 .cache_exp(cache_exp)
                 .cache_clean_interval(cache_clean_interval)
+                .preserve_cookies(preserve_cookies)
+                .build()
+                .unwrap(),
+            #[cfg(not(feature = "cache"))]
+            client: ApiClientBuilder::new(cookie_path)
+                .cookie_path(cookie_path)
                 .preserve_cookies(preserve_cookies)
                 .build()
                 .unwrap(),
