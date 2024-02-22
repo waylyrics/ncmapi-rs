@@ -3,6 +3,7 @@
 mod api;
 mod client;
 mod crypto;
+mod hex;
 pub mod types;
 
 pub use api::{NcmApi, ResourceType, SearchType};

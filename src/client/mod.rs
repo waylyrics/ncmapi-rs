@@ -2,7 +2,6 @@ mod api_request;
 mod api_response;
 pub use api_response::ImplicitResult;
 mod route;
-mod store;
 
 use std::{
     borrow::Cow,
@@ -11,7 +10,7 @@ use std::{
     io::{Read, Write},
     path::Path,
     sync::Arc,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use cookie::Cookie;
@@ -28,6 +27,12 @@ pub use api_request::{ApiRequest, ApiRequestBuilder};
 pub use api_response::ApiResponse;
 pub(crate) use route::API_ROUTE;
 use serde_json::{json, Value};
+
+#[cfg(feature = "cache")]
+mod store;
+#[cfg(feature = "cache")]
+use std::time::Duration;
+#[cfg(feature = "cache")]
 use store::{InMemStore, Store};
 
 use crate::TResult;
@@ -156,11 +161,12 @@ impl ApiClient {
     }
 
     pub async fn request(&self, req: ApiRequest) -> TResult<ApiResponse> {
-        let id = req.id();
-
         #[cfg(feature = "cache")]
-        if self.store.contains_key(&id) {
-            return Ok(self.store.get(&id).unwrap());
+        {
+            let id = req.id();
+            if self.store.contains_key(&id) {
+                return Ok(self.store.get(&id).unwrap());
+            }
         }
 
         let request = self.to_http_request(req)?;
@@ -173,10 +179,19 @@ impl ApiClient {
             .execute(request)
             .await
             .map_err(|_| ApiErr::ReqwestErr)?;
-        self.on_response(id, resp).await
+        self.on_response(
+            #[cfg(feature = "cache")]
+            id,
+            resp,
+        )
+        .await
     }
 
-    async fn on_response(&self, id: String, resp: Response) -> TResult<ApiResponse> {
+    async fn on_response(
+        &self,
+        #[cfg(feature = "cache")] id: String,
+        resp: Response,
+    ) -> TResult<ApiResponse> {
         let mut cs = resp.headers().get_all(SET_COOKIE).iter().peekable();
         if cs.peek().is_some() {
             // sync cookie to jar

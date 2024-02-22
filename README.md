@@ -40,6 +40,34 @@ Most of the functions are self documented. If there is some confusion about the 
     * takes an ApiRequst, process it into a Request by presenting it with header and encrypt the payload etc. And then send requests to the server, takes the response and then returns the ApiResponse back.
     * cache
 
+### Status
+
+```rust
+// failures:
+    api::tests::test_album_sub,
+    api::tests::test_album_sublist,
+    api::tests::test_artist_sub,
+    api::tests::test_artist_sublist,
+    api::tests::test_comment_create,
+    api::tests::test_daily_signin,
+    api::tests::test_fm_trash,
+    api::tests::test_like,
+    api::tests::test_likelist,
+    api::tests::test_login_phone,
+    api::tests::test_login_refresh,
+    api::tests::test_recommend_resource,
+    api::tests::test_recommend_songs,
+    api::tests::test_user_cloud,
+    api::tests::test_user_level,
+    api::tests::test_user_record,
+    api::tests::test_user_subcount,
+    types::tests::test_de_artist_sublist,
+    types::tests::test_de_playlist_detail,
+    types::tests::test_de_recommended_playlists,
+    types::tests::test_de_recommended_songs,
+    types::tests::test_de_user_cloud,
+```
+
 ### Contribute
 
 If you think this package useful, please do make pull requests.

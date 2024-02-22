@@ -1,8 +1,9 @@
 mod key;
 
+use base64::engine::general_purpose::STANDARD as base64;
+use base64::Engine as _;
 use openssl::{
     error::ErrorStack,
-    hash::{hash, MessageDigest},
     rsa::{Padding, Rsa},
     symm::{decrypt, encrypt, Cipher},
 };
@@ -63,12 +64,12 @@ pub fn weapi(text: &[u8]) -> WeapiForm {
         .collect::<Vec<u8>>();
 
     let params = {
-        let p = base64::encode(aes_128_cbc(
+        let p = base64.encode(aes_128_cbc(
             text,
             PRESET_KEY.as_bytes(),
             Some(IV.as_bytes()),
         ));
-        base64::encode(aes_128_cbc(p.as_bytes(), &sk, Some(IV.as_bytes())))
+        base64.encode(aes_128_cbc(p.as_bytes(), &sk, Some(IV.as_bytes())))
     };
 
     let enc_sec_key = {
@@ -88,7 +89,7 @@ pub fn eapi(url: &[u8], data: &[u8]) -> EapiForm {
         String::from_utf8_lossy(url),
         String::from_utf8_lossy(data)
     );
-    let digest = hex::encode(hash(MessageDigest::md5(), msg.as_bytes()).unwrap());
+    let digest = crate::hex::md5_hex(msg.as_bytes());
 
     let text = {
         let d = "-36cd479b6b5-";

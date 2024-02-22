@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use super::UA;
 use crate::crypto::Crypto;
-use openssl::hash::{hash, MessageDigest};
 use serde::Serialize;
 use serde_json::{json, Value};
 
@@ -196,13 +195,15 @@ impl ApiRequest {
         )
     }
 
+    #[cfg(feature = "cache")]
     fn serialize(&self) -> String {
         serde_json::to_string(self).unwrap()
     }
 
+    #[cfg(feature = "cache")]
     pub fn id(&self) -> String {
-        let digest = hash(MessageDigest::md5(), self.serialize().as_bytes()).unwrap();
-        hex::encode(digest)
+        let id = self.serialize();
+        crate::api::md5_hex(id.as_bytes())
     }
 
     // pub fn url(&self) -> &str {
@@ -296,6 +297,7 @@ mod tests {
         assert_eq!(r.data.unwrap()["age"], 19);
     }
 
+    #[cfg(feature = "cache")]
     #[test]
     fn test_serialize() {
         let r = Rb::post(API_ROUTE["search"])
