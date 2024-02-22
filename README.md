@@ -44,28 +44,40 @@ Most of the functions are self documented. If there is some confusion about the 
 
 ```rust
 // failures:
+    // 专辑订阅
     api::tests::test_album_sub,
-    api::tests::test_album_sublist,
+    api::tests::test_album_sublist, types::tests::test_de_artist_sublist,
+
+    // 艺术家订阅
     api::tests::test_artist_sub,
     api::tests::test_artist_sublist,
+
+    // 发布评论
     api::tests::test_comment_create,
+
+    // 每日签到
     api::tests::test_daily_signin,
+
+    // FM 垃圾
     api::tests::test_fm_trash,
+
+    // 收藏/收藏列表
     api::tests::test_like,
     api::tests::test_likelist,
+
+    // 手机号登录，刷新登录
     api::tests::test_login_phone,
     api::tests::test_login_refresh,
-    api::tests::test_recommend_resource,
-    api::tests::test_recommend_songs,
-    api::tests::test_user_cloud,
+
+    // 推荐播放列表，推荐歌曲
+    api::tests::test_recommend_resource, types::tests::test_de_recommended_playlists,
+    api::tests::test_recommend_songs, types::tests::test_de_recommended_songs,
+
+    // 用户相关
+    api::tests::test_user_cloud, types::tests::test_de_user_cloud,
     api::tests::test_user_level,
     api::tests::test_user_record,
     api::tests::test_user_subcount,
-    types::tests::test_de_artist_sublist,
-    types::tests::test_de_playlist_detail,
-    types::tests::test_de_recommended_playlists,
-    types::tests::test_de_recommended_songs,
-    types::tests::test_de_user_cloud,
 ```
 
 ### Contribute
