@@ -379,19 +379,12 @@ impl ApiClient {
     }
 
     pub fn cookie(&self, name: &str, url: &Url) -> Option<Cookie> {
-        for c in self.cookies(url) {
-            if c.name() == name {
-                return Some(c);
-            }
-        }
-        None
+        self.cookies(url).into_iter().find(|c| c.name() == name)
     }
 
     fn cookie_netease_eapi(&self, name: &str) -> Option<String> {
-        if let Some(cookie) = self.cookie(name, &self.config.base_url) {
-            return Some(cookie.value().to_owned());
-        }
-        None
+        self.cookie(name, &self.config.base_url)
+            .map(|c| c.value().to_owned())
     }
 
     fn eapi_header_cookies(&self) -> Hm {
