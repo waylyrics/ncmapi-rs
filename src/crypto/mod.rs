@@ -1,13 +1,21 @@
 mod key;
 
+use std::{arch::x86_64::_mm_permutevar_ps, convert::Infallible};
+
+use aes::cipher::{
+    block_padding::{Pkcs7, UnpadError},
+    generic_array::GenericArray,
+    BlockDecryptMut, BlockEncryptMut, KeyInit, KeyIvInit,
+};
 use base64::engine::general_purpose::STANDARD as base64;
 use base64::Engine as _;
-use openssl::{
-    error::ErrorStack,
-    rsa::{Padding, Rsa},
-    symm::{decrypt, encrypt, Cipher},
+use rand::{thread_rng, RngCore};
+use rsa::{
+    pkcs8::DecodePublicKey,
+    rand_core::CryptoRngCore,
+    traits::{PaddingScheme, PublicKeyParts},
+    RsaPublicKey,
 };
-use rand::RngCore;
 use serde::Serialize;
 
 use key::{BASE62, EAPI_KEY, IV, LINUX_API_KEY, PRESET_KEY, PUBLIC_KEY};
@@ -64,11 +72,7 @@ pub fn weapi(text: &[u8]) -> WeapiForm {
         .collect::<Vec<u8>>();
 
     let params = {
-        let p = base64.encode(aes_128_cbc(
-            text,
-            PRESET_KEY.as_bytes(),
-            Some(IV.as_bytes()),
-        ));
+        let p = base64.encode(aes_128_cbc(text, PRESET_KEY, Some(IV.as_bytes())));
         base64.encode(aes_128_cbc(p.as_bytes(), &sk, Some(IV.as_bytes())))
     };
 
@@ -97,7 +101,7 @@ pub fn eapi(url: &[u8], data: &[u8]) -> EapiForm {
     };
 
     let params = {
-        let p = aes_128_ecb(&text, EAPI_KEY.as_bytes(), None);
+        let p = aes_128_ecb(&text, EAPI_KEY, None);
         hex::encode_upper(p)
     };
 
@@ -105,8 +109,8 @@ pub fn eapi(url: &[u8], data: &[u8]) -> EapiForm {
 }
 
 #[allow(unused)]
-pub fn eapi_decrypt(ct: &[u8]) -> Result<Vec<u8>, ErrorStack> {
-    aes_128_ecb_decrypt(ct, EAPI_KEY.as_bytes(), None)
+pub fn eapi_decrypt(ct: &[u8]) -> Result<Vec<u8>, UnpadError> {
+    aes_128_ecb_decrypt(ct, EAPI_KEY, None)
 }
 
 pub fn linuxapi(text: &[u8]) -> LinuxapiForm {
@@ -116,30 +120,61 @@ pub fn linuxapi(text: &[u8]) -> LinuxapiForm {
     LinuxapiForm { eparams }
 }
 
+type Aes128EcbEnc = ecb::Encryptor<aes::Aes128>;
+type Aes128EcbDec = ecb::Decryptor<aes::Aes128>;
+type Aes128CbcEnc = cbc::Encryptor<aes::Aes128>;
+
 fn aes_128_ecb(pt: &[u8], key: &[u8], iv: Option<&[u8]>) -> Vec<u8> {
-    let cipher = Cipher::aes_128_ecb();
-    encrypt(cipher, key, iv, pt).unwrap()
+    let cipher = Aes128EcbEnc::new(GenericArray::from_slice(key));
+    eprintln!("test de here");
+    cipher.encrypt_padded_vec_mut::<Pkcs7>(pt)
 }
 
-fn aes_128_ecb_decrypt(ct: &[u8], key: &[u8], iv: Option<&[u8]>) -> Result<Vec<u8>, ErrorStack> {
-    let cipher = Cipher::aes_128_ecb();
-    decrypt(cipher, key, iv, ct)
+fn aes_128_ecb_decrypt(ct: &[u8], key: &[u8], iv: Option<&[u8]>) -> Result<Vec<u8>, UnpadError> {
+    let cipher = Aes128EcbDec::new(GenericArray::from_slice(key));
+    cipher.decrypt_padded_vec_mut::<Pkcs7>(ct)
 }
 
 fn aes_128_cbc(pt: &[u8], key: &[u8], iv: Option<&[u8]>) -> Vec<u8> {
-    let cipher = Cipher::aes_128_cbc();
-    encrypt(cipher, key, iv, pt).unwrap()
+    let cipher = Aes128CbcEnc::new(GenericArray::from_slice(key), iv.unwrap_or_default().into());
+    cipher.encrypt_padded_vec_mut::<Pkcs7>(pt)
 }
 
 fn rsa(pt: &[u8], key: &[u8]) -> Vec<u8> {
-    let rsa = Rsa::public_key_from_pem(key).unwrap();
+    use rsa::{BigUint, Result, RsaPrivateKey};
+    pub struct NoPadding;
+    impl PaddingScheme for NoPadding {
+        fn decrypt<Rng: CryptoRngCore + ?Sized>(
+            self,
+            _rng: Option<&mut Rng>,
+            priv_key: &RsaPrivateKey,
+            ciphertext: &[u8],
+        ) -> Result<Vec<u8>> {
+            let c = BigUint::from_bytes_be(ciphertext);
+            let m = c.modpow(&priv_key.n(), &priv_key.n());
+            Ok(m.to_bytes_be())
+        }
+
+        fn encrypt<Rng: CryptoRngCore + ?Sized>(
+            self,
+            _rng: &mut Rng,
+            pub_key: &RsaPublicKey,
+            msg: &[u8],
+        ) -> Result<Vec<u8>> {
+            let m = BigUint::from_bytes_be(msg);
+            let e = BigUint::from_bytes_le(&65537_u32.to_le_bytes());
+            let c = m.modpow(&e, &pub_key.n());
+            Ok(c.to_bytes_be())
+        }
+    }
+
+    let pub_key = RsaPublicKey::from_public_key_der(base64::decode(key).unwrap().as_ref()).unwrap();
 
     let prefix = vec![0u8; 128 - pt.len()];
     let pt = [&prefix[..], pt].concat();
 
-    let mut ct = vec![0; rsa.size() as usize];
-    rsa.public_encrypt(&pt, &mut ct, Padding::NONE).unwrap();
-    ct
+    let mut rng = thread_rng();
+    pub_key.encrypt(&mut rng, NoPadding, &pt).unwrap()
 }
 
 #[cfg(test)]
@@ -151,8 +186,8 @@ mod tests {
     #[test]
     fn test_aes_128_ecb() {
         let pt = "plain text";
-        let ct = aes_128_ecb(pt.as_bytes(), EAPI_KEY.as_bytes(), None);
-        let _pt = aes_128_ecb_decrypt(&ct, EAPI_KEY.as_bytes(), None);
+        let ct = aes_128_ecb(pt.as_bytes(), EAPI_KEY, None);
+        let _pt = aes_128_ecb_decrypt(&ct, EAPI_KEY, None);
         assert!(_pt.is_ok());
 
         if let Ok(decrypted) = _pt {
@@ -163,13 +198,13 @@ mod tests {
     #[test]
     fn test_aes_cbc() {
         let pt = "plain text";
-        let ct = aes_128_cbc(pt.as_bytes(), PRESET_KEY.as_bytes(), Some(IV.as_bytes()));
+        let ct = aes_128_cbc(pt.as_bytes(), PRESET_KEY, Some(IV.as_bytes()));
         assert!(hex::encode(ct).ends_with("baf0"))
     }
 
     #[test]
     fn test_rsa() {
-        let ct = rsa(PRESET_KEY.as_bytes(), PUBLIC_KEY.as_bytes());
+        let ct = rsa(PRESET_KEY, PUBLIC_KEY.as_bytes());
         assert!(hex::encode(ct).ends_with("4413"));
     }
 
@@ -187,7 +222,7 @@ mod tests {
     #[test]
     fn test_eapi_decrypt() {
         let pt = "plain text";
-        let ct = aes_128_ecb(pt.as_bytes(), EAPI_KEY.as_bytes(), None);
+        let ct = aes_128_ecb(pt.as_bytes(), EAPI_KEY, None);
         assert_eq!(pt.as_bytes(), &eapi_decrypt(&ct).unwrap())
     }
 

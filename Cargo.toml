@@ -19,17 +19,25 @@ cache = ["dep:memory-cache-rs"]
 default = []
 
 [dependencies]
+cookie = "0.18"
 reqwest = { version = "0.12", features = ["json", "cookies"] }
 tokio = { version = "1", features = ["full"] }
+
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
 serde_json = "1.0"
-openssl = "0.10.64"
-hex = "0.4"
+
 rand = "0.8"
-base64 = "0.22"
-memory-cache-rs = { version = "0.2.0", optional = true }
-cookie = "0.18"
 regex = "1.10"
+memory-cache-rs = { version = "0.2.0", optional = true }
 phf = { version = "0.11", features = ["macros"] }
 thiserror = "1"
+
+base64 = "0.22"
+hex = "0.4"
+
+md5 = "0.7.0"
+rsa = "0.9.6"
+aes = "0.8.4"
+ecb = { version = "0.1.2", features = ["std"] }
+cbc = { version = "0.1.2", features = ["std"] }
