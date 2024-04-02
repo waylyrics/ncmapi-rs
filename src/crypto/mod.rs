@@ -1,7 +1,5 @@
 mod key;
 
-use std::{arch::x86_64::_mm_permutevar_ps, convert::Infallible};
-
 use aes::cipher::{
     block_padding::{Pkcs7, UnpadError},
     generic_array::GenericArray,
@@ -124,13 +122,13 @@ type Aes128EcbEnc = ecb::Encryptor<aes::Aes128>;
 type Aes128EcbDec = ecb::Decryptor<aes::Aes128>;
 type Aes128CbcEnc = cbc::Encryptor<aes::Aes128>;
 
-fn aes_128_ecb(pt: &[u8], key: &[u8], iv: Option<&[u8]>) -> Vec<u8> {
+fn aes_128_ecb(pt: &[u8], key: &[u8], _iv: Option<&[u8]>) -> Vec<u8> {
     let cipher = Aes128EcbEnc::new(GenericArray::from_slice(key));
     eprintln!("test de here");
     cipher.encrypt_padded_vec_mut::<Pkcs7>(pt)
 }
 
-fn aes_128_ecb_decrypt(ct: &[u8], key: &[u8], iv: Option<&[u8]>) -> Result<Vec<u8>, UnpadError> {
+fn aes_128_ecb_decrypt(ct: &[u8], key: &[u8], _iv: Option<&[u8]>) -> Result<Vec<u8>, UnpadError> {
     let cipher = Aes128EcbDec::new(GenericArray::from_slice(key));
     cipher.decrypt_padded_vec_mut::<Pkcs7>(ct)
 }
@@ -140,6 +138,7 @@ fn aes_128_cbc(pt: &[u8], key: &[u8], iv: Option<&[u8]>) -> Vec<u8> {
     cipher.encrypt_padded_vec_mut::<Pkcs7>(pt)
 }
 
+// key: der+base64
 fn rsa(pt: &[u8], key: &[u8]) -> Vec<u8> {
     use rsa::{BigUint, Result, RsaPrivateKey};
     pub struct NoPadding;
@@ -168,7 +167,12 @@ fn rsa(pt: &[u8], key: &[u8]) -> Vec<u8> {
         }
     }
 
-    let pub_key = RsaPublicKey::from_public_key_der(base64::decode(key).unwrap().as_ref()).unwrap();
+    let pub_key = RsaPublicKey::from_public_key_der(
+        &base64::engine::general_purpose::STANDARD
+            .decode(key)
+            .unwrap(),
+    )
+    .unwrap();
 
     let prefix = vec![0u8; 128 - pt.len()];
     let pt = [&prefix[..], pt].concat();
