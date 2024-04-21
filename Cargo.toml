@@ -1,7 +1,7 @@
 [package]
-name = "ncmapi"
+name = "ncmapi2"
 version = "0.1.13"
-authors = ["akatsuki <akatsuki@gmail.com>"]
+authors = ["akatsuki <akatsuki@gmail.com>", "mokurin000"]
 edition = "2018"
 description = "NetEase Cloud Music API for Rust."
 license = "MIT"
