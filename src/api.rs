@@ -507,6 +507,7 @@ impl NcmApi {
         let r = ApiRequestBuilder::post(API_ROUTE["playlist_tracks"])
             .add_cookie("os", "pc")
             .set_data(json!({"op": op, "pid": pid, "trackIds": tracks, "imme": true}))
+            .set_crypto(crate::crypto::Crypto::Weapi)
             .build();
 
         self.client.request(r).await
