@@ -104,6 +104,7 @@ pub(crate) static API_ROUTE: Map<&'static str, &'static str> = phf_map! {
     "login_status"=>                     "https://music.163.com/weapi/w/nuser/account/get",
     "logout"=>                           "https://music.163.com/weapi/logout",
     "lyric"=>                            "https://music.163.com/api/song/lyric",
+    "lyric_new"=>                        "https://music.163.com/api/song/lyric/v1",
     "mlog_to_video"=>                    "https://music.163.com/weapi/mlog/video/convert/id",
     "mlog_url"=>                         "https://music.163.com/weapi/mlog/detail/v1",
     "msg_comments"=>                     "https://music.163.com/api/v1/user/comments/${query.uid}",
