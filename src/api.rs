@@ -465,6 +465,29 @@ impl NcmApi {
         self.client.request(r).await
     }
 
+    /// 说明 : 调用此接口 , 传入音乐 id 可获得对应音乐的逐字歌词 ( 不需要登录 )
+    /// 
+    /// required
+    /// 必选参数 : id: 音乐 id
+    pub async fn lyric_new(&self, id: usize) -> TResult<ApiResponse> {
+        let r = ApiRequestBuilder::post(API_ROUTE["lyric_new"])
+            .add_cookie("os", "pc")
+            .set_data(json!({
+                "id": id,
+                "cp": false,
+                "yv": 0,
+                "lv": 0,
+                "kv": 0,
+                "tv": 0,
+                "rv": 0,
+                "ytv": 0,
+                "yrv": 0,
+            }))
+            .build();
+
+        self.client.request(r).await
+    }
+
     /// 说明 : 私人 FM( 需要登录 )
     pub async fn personal_fm(&self) -> TResult<ApiResponse> {
         let r = ApiRequestBuilder::post(API_ROUTE["personal_fm"]).build();
@@ -1183,6 +1206,17 @@ mod tests {
     async fn test_lyric() {
         let api = NcmApi::default();
         let resp = api.lyric(SONG_ID).await;
+        assert!(resp.is_ok());
+
+        let res = resp.unwrap();
+        let res = res.deserialize_to_implict();
+        assert_eq!(res.code, 200);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_lyric_new() {
+        let api = NcmApi::default();
+        let resp = api.lyric_new(SONG_ID).await;
         assert!(resp.is_ok());
 
         let res = resp.unwrap();

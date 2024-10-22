@@ -240,6 +240,22 @@ pub struct LyricResp {
 
 #[derive(Default, Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct LyricNewResp {
+    pub code: usize,
+    pub sgc: bool,
+    pub sfy: bool,
+    pub qfy: bool,
+    pub lrc: Option<Lyric>,
+    pub klyric: Option<Lyric>,
+    pub tlyric: Option<Lyric>,
+    pub romalrc: Option<Lyric>,
+    pub yrc: Option<Lyric>,
+    pub ytlrc: Option<Lyric>,
+    pub yromalrc: Option<Lyric>,
+}
+
+#[derive(Default, Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Lyric {
     #[serde(default)]
     pub version: usize,
@@ -343,7 +359,7 @@ mod tests {
             PlaylistDetailResp, PodcastAudiosResp, RecommendedPlaylistsResp, RecommendedSongsResp,
             ResourceCommentsResp, SearchAlbumResp, SearchArtistResp, SearchPlaylistResp,
             SearchPodcastResp, SearchSongResp, SimiSongsResp, SongUrlResp, UserAccountResp,
-            UserCloudResp, UserPlaylistResp, UserPodcastsResp,
+            UserCloudResp, UserPlaylistResp, UserPodcastsResp, LyricNewResp
         },
         NcmApi, SearchType,
     };
@@ -507,6 +523,16 @@ mod tests {
         assert!(resp.is_ok());
 
         let res = serde_json::from_slice::<LyricResp>(resp.unwrap().data()).unwrap();
+        assert_eq!(res.code, 200);
+    }
+
+    #[tokio::test]
+    async fn test_de_lyric_new() {
+        let api = NcmApi::default();
+        let resp = api.lyric(17346999).await;
+        assert!(resp.is_ok());
+
+        let res = serde_json::from_slice::<LyricNewResp>(resp.unwrap().data()).unwrap();
         assert_eq!(res.code, 200);
     }
 
